@@ -5,6 +5,7 @@ import { isNode } from "@azure/core-util";
 import axios, { AxiosInstance, AxiosRequestConfig, RawAxiosRequestHeaders } from "axios";
 import http from "http";
 import https from "https";
+import pino, { Logger } from "pino";
 import { v4 as uuidv4 } from "uuid";
 import { KustoHeaders } from "./clientDetails";
 import ClientRequestProperties from "./clientRequestProperties";
@@ -28,6 +29,14 @@ enum ExecutionType {
     QueryV1 = "queryv1",
 }
 
+export type Proxy = {
+    customPath?: string;
+    log: Logger;
+    url: string;
+
+    getToken: (log: Logger) => Promise<string>;
+};
+
 export type RequestEntity = { query: string } | { stream: any } | { blob: string };
 
 export class KustoClient {
@@ -39,9 +48,11 @@ export class KustoClient {
     axiosInstance: AxiosInstance;
     cancelToken = axios.CancelToken.source();
     private _isClosed: boolean = false;
+    private _proxy?: Proxy;
 
-    constructor(kcsb: string | ConnectionStringBuilder) {
+    constructor(kcsb: string | ConnectionStringBuilder, proxy?: Proxy) {
         this.connectionString = typeof kcsb === "string" ? new ConnectionStringBuilder(kcsb) : kcsb;
+        this._proxy = proxy;
         if (!this.connectionString.dataSource) {
             throw new Error("Cluster url is required");
         }
@@ -228,10 +239,28 @@ export class KustoClient {
         timeout: number,
         properties?: ClientRequestProperties | null
     ): Promise<KustoResponseDataSet> {
+        let endpointUrl = endpoint;
+
         // replace non-ascii characters with ? in headers
         for (const key of Object.keys(headers)) {
             headers[key] = headers[key].replace(/[^\x00-\x7F]+/g, "?");
         }
+
+        if (this._proxy) {
+            const url = new URL(endpoint);
+            const baseUrl = new URL(this._proxy.url);
+            const proxyUrl = new URL(`${baseUrl.protocol}//${baseUrl.host}${baseUrl.pathname}${this._proxy.customPath ?? ""}${url.pathname}`);
+
+            baseUrl.searchParams.forEach((value, key) => {
+                proxyUrl.searchParams.append(key, value);
+            });
+
+            endpointUrl = proxyUrl.toString();
+
+            headers.Authorization = `Bearer ${await this._proxy.getToken(this._proxy.log)}`;
+            headers["x-kusto-host"] = url.host;
+        }
+
 
         const axiosConfig: AxiosRequestConfig = {
             headers,
@@ -240,7 +269,7 @@ export class KustoClient {
 
         let axiosResponse;
         try {
-            axiosResponse = await this.axiosInstance.post(endpoint, payload, axiosConfig);
+            axiosResponse = await this.axiosInstance.post(endpointUrl, payload, axiosConfig);
         } catch (error: unknown) {
             if (axios.isAxiosError(error)) {
                 // Since it's impossible to modify the error request object, the only way to censor the Authorization header is to remove it.
