@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+RUN apk add jq moreutils
+
+WORKDIR /usr/app
+
+COPY packages/azure-kusto-data/dist-esm/src dist-esm/src
+COPY packages/azure-kusto-data/types/src types/src
+COPY packages/azure-kusto-data/package.json package.json
+COPY packages/azure-kusto-data/README.md README.md
+
+COPY node_modules/.bin/uuid node_modules/.bin/uuid
+COPY node_modules/@types/uuid node_modules/@types/uuid
+COPY node_modules/uuid node_modules/uuid
+
+COPY LICENSE LICENSE
+
+RUN jq '.name = "@newboot-io/azure-kusto-node"' package.json | sponge package.json
