@@ -24,7 +24,7 @@
         "bumpVersion": "lerna version --no-git-tag-version --no-push",
         "bumpVersionPush": "lerna version",
         "watch": "lerna exec --stream --parallel -- tsc -b -w",
-        "publish:newboot": "npm install && npm run prepublish && docker build -t azure-kusto-data -f Dockerfile.publish . && docker create --name publishKusto azure-kusto-data && docker cp publishKusto:/usr/app . && cd app && npm publish"
+        "publish:newboot": "npm install && npm run prepublish && docker build -t azure-kusto-data -f Dockerfile.publish . && docker rm -f publishKusto && docker create --name publishKusto azure-kusto-data && docker cp publishKusto:/usr/app . && cd app && npm publish"
     },
     "devDependencies": {
         "@types/jest": "^29.5.0",
