@@ -23,8 +23,7 @@
         "cleanModules": "rimraf node_modules && rimraf packages/azure-kusto-data/node_modules && rimraf packages/azure-kusto-ingest/node_modules && rimraf packages/quick_start/node_modules",
         "bumpVersion": "lerna version --no-git-tag-version --no-push",
         "bumpVersionPush": "lerna version",
-        "watch": "lerna exec --stream --parallel -- tsc -b -w",
-        "publish:newboot": "./builder/publish.sh"
+        "watch": "lerna exec --stream --parallel -- tsc -b -w"
     },
     "devDependencies": {
         "@types/jest": "^29.5.0",
