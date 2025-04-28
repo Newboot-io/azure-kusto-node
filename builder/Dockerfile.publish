@@ -1,13 +1,14 @@
-FROM node:20-alpine as builder
+FROM node:20-alpine
+
+RUN apk add jq moreutils
 
 WORKDIR /app
 
 COPY . .
+RUN jq '.name = "@newboot-io/azure-kusto-node"' /app/packages/azure-kusto-data/package.json | sponge /app/packages/azure-kusto-data/package.json
 RUN npm install
 
 FROM node:20-alpine
-
-RUN apk add jq moreutils
 
 WORKDIR /usr/app
 
@@ -22,4 +23,3 @@ COPY --from=0 /app/node_modules/uuid node_modules/uuid
 
 COPY --from=0 /app/LICENSE LICENSE
 
-RUN jq '.name = "@newboot-io/azure-kusto-node"' package.json | sponge package.json
